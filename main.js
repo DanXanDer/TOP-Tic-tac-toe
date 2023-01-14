@@ -13,6 +13,8 @@ const gameBoard = (() => {
     const playerX = Player('playerX', 'X');
     const playerO = Player('playerO', 'O');
     let roundWinner;
+    let signCounter = 0;
+    let counter = 0;
     let roundStatus;
     let roundCount = 0;
     let xSigns = [];
@@ -29,7 +31,18 @@ const gameBoard = (() => {
         ['3', '5', '7'],
     ]
 
+    const resetSignArray = () => {
+        xSigns = [];
+        oSigns = [];
+    }
+
     const getRoundWinner = () => roundWinner;
+
+    const getSpotCounter = () => counter;
+
+    const resetSpotCounter = () => counter = 0;
+
+    const incrementSpotCounter = () => counter++;
 
     const getGameWinner = () => {
         let gameWinner;
@@ -47,59 +60,65 @@ const gameBoard = (() => {
 
     const getRound = () => roundCount;
 
+    const incrementRoundCount = () => roundCount++;
+
     const getRoundStatus = () => roundStatus;
 
-    const determineWinner = () => {
+    const determineWinner = (signCounter) => {
         winCombos.forEach(winCombo => {
             if (winCombo.every(x => xSigns.includes(x))) {
                 playerX.incrementWin();
                 roundWinner = playerX.getPlayer();
                 roundStatus = 'over';
-                xSigns = [];
-                counter = 0;
             }
             else if (winCombo.every(o => oSigns.includes(o))) {
                 playerO.incrementWin();
                 roundWinner = playerO.getPlayer();
                 roundStatus = 'over';
-                oSigns = [];
-                counter = 0;
             }
         })
+        if (signCounter === 9) {
+            roundWinner = 'DRAW';
+            roundStatus = 'over';
+        }
     }
 
-    const populateBoard = (counter, spot) => {
-        if (counter % 2 !== 0) {
-            spot.textContent = playerX.getSign();
-            xSigns.push(spot.getAttribute('class'));
+    const populateBoard = (e) => {
+        incrementSpotCounter();
+        roundStatus = 'started';
+        if (!(playerX.getWinCount() === 3 || playerO.getWinCount() === 3)) {
+            signCounter++;
+            console.log(signCounter);
+            boardSpots.forEach(spot => {
+                if ((spot.getAttribute('class') === e.target.getAttribute('class')) && (spot.textContent === '')) {
+                    if (getSpotCounter() % 2 !== 0) {
+                        spot.textContent = playerX.getSign();
+                        xSigns.push(spot.getAttribute('class'));
+                    }
+                    else {
+                        spot.textContent = playerO.getSign();
+                        oSigns.push(spot.getAttribute('class'));
+                    }
+                    if ((xSigns.length >= 3) || (oSigns.length >= 3)) {
+                        determineWinner(signCounter);
+                    }
+                }
+            })
         }
-        else {
-            spot.textContent = playerO.getSign();
-            oSigns.push(spot.getAttribute('class'));
-        }
-        if ((xSigns.length >= 3) || (oSigns.length >= 3)) {
-            determineWinner();
+        if (gameBoard.getRoundStatus() === 'over') {
+            alert(`The winner is ${getRoundWinner()}`)
+            displayController.showRoundButton();
+            resetSignArray();
+            resetSpotCounter();
+            signCounter = 0;
+            board.removeEventListener('click', populateBoard);
         }
     }
 
     const playRound = () => {
-        let counter = 0;
-        board.addEventListener('click', (e) => {
-            counter++;
-            console.log(counter);
-            if (!(playerX.getWinCount() === 1 || playerO.getWinCount() === 1)) {
-                boardSpots.forEach(spot => {
-                    if ((spot.getAttribute('class') === e.target.getAttribute('class')) && (spot.textContent === '')) {
-                        populateBoard(counter, spot);
-                    }
-                })
-            }
-            if (gameBoard.getRoundStatus() === 'over') {
-                displayController.showRoundButton();
-                console.log(roundStatus);
-            }
-        })
-
+        incrementRoundCount();
+        displayController.setRoundTitle(`Round: ${getRound()}`)
+        board.addEventListener('click', populateBoard);
     }
 
     return {
@@ -118,6 +137,7 @@ const gameBoard = (() => {
 
 const displayController = (() => {
     const roundButton = document.querySelector('.button');
+    const roundTitle = document.querySelector('.round-text')
 
     const showRoundButton = () => {
         roundButton.style.visibility = 'visible';
@@ -126,19 +146,26 @@ const displayController = (() => {
     const clearBoard = () => {
         roundButton.addEventListener('click', (e) => {
             gameBoard.boardSpots.forEach(spot => spot.textContent = '');
+            gameBoard.playRound();
         });
     }
-    //roundButton.addEventListener('click', clearBoard);
+
+    const setRoundTitle = (title) => {
+        roundTitle.textContent = title;
+    }
 
     const playGame = () => {
         gameBoard.playRound();
+        clearBoard();
     }
+
     return {
         playGame,
         showRoundButton,
         clearBoard,
+        setRoundTitle
     }
+
 })();
 
 displayController.playGame();
-displayController.clearBoard();
